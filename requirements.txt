@@ -1,3 +1,4 @@
-flask
-user-agents
+Flask
 gunicorn
+user-agents
+requests
