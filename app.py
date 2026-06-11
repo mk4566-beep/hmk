@@ -1,46 +1,38 @@
 from flask import Flask, request
-from datetime import datetime
 
 app = Flask(__name__)
 
 @app.route('/')
 def index():
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-    x_forwarded_for = request.headers.get('X-Forwarded-For')
-    x_real_ip = request.headers.get('X-Real-IP')
-    cf_connecting_ip = request.headers.get('CF-Connecting-IP')
-    true_client_ip = request.headers.get('True-Client-IP')
-    fly_client_ip = request.headers.get('Fly-Client-IP')
-
-    ip = None
-
+    # 1. لیست تمام جاهایی که ممکنه IP توش باشه رو چک می‌کنیم
+    # رندر معمولاً IP واقعی رو توی X-Forwarded-For می‌ذاره
+    headers = request.headers
+    
+    x_forwarded_for = headers.get('X-Forwarded-For')
     if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0].strip()
-    elif x_real_ip:
-        ip = x_real_ip.strip()
-    elif cf_connecting_ip:
-        ip = cf_connecting_ip.strip()
-    elif true_client_ip:
-        ip = true_client_ip.strip()
-    elif fly_client_ip:
-        ip = fly_client_ip.strip()
+        # اولین IP در لیست معمولاً IP اصلی کاربره
+        real_ip = x_forwarded_for.split(',')[0].strip()
     else:
-        ip = request.remote_addr
+        # اگه اون نبود، اینا رو چک کن
+        real_ip = headers.get('CF-Connecting-IP') or \
+                  headers.get('X-Real-IP') or \
+                  request.remote_addr
 
-    print("\n" + "=" * 50)
-    print(f"TIME: {now}")
-    print(f"REAL IP: {ip}")
-    print(f"REMOTE_ADDR: {request.remote_addr}")
-    print(f"X-Forwarded-For: {x_forwarded_for}")
-    print(f"X-Real-IP: {x_real_ip}")
-    print(f"CF-Connecting-IP: {cf_connecting_ip}")
-    print(f"True-Client-IP: {true_client_ip}")
-    print(f"Fly-Client-IP: {fly_client_ip}")
-    print(f"User-Agent: {request.headers.get('User-Agent')}")
-    print("=" * 50 + "\n")
-
-    return "System is online"
+    # 2. نمایش مستقیم در صفحه سایت
+    return f"""
+    <html>
+        <head><title>IP Checker for Younes</title></head>
+        <body style="font-family: Arial; text-align: center; margin-top: 50px;">
+            <h1 style="color: #ff4757;">سلام یونس!</h1>
+            <h2 style="background: #f1f2f6; padding: 20px; display: inline-block; border-radius: 10px;">
+                Your Real IP: <span style="color: blue;">{real_ip}</span>
+            </h2>
+            <p style="margin-top: 20px; color: #7f8c8d;">
+                Internal Remote Addr (Just for Debug): {request.remote_addr}
+            </p>
+        </body>
+    </html>
+    """
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
