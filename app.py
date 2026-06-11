@@ -48,15 +48,13 @@ def index():
     # ساختن پیام لاگ
     log_message = f"[{current_time}] IP: {remote_ip}, Device: {device_model}, Browser: {browser_type}\n"
 
-    # نوشتن در فایل لاگ
-    try:
-        with open('test_log.txt', 'a', encoding='utf-8') as f:
-            f.write(log_message)
-        # وقتی همه چی اوکی بود، یه پیام موفقیت برمی‌گردونیم
-        return f"Hello! Your info has been logged. IP: {remote_ip}, Device: {device_model}, Browser: {browser_type}"
-    except Exception as e:
-        # اگه مشکلی بود، پیام خطا برمی‌گردونیم
-        return f"An error occurred: {e}", 500
+    # --- شروع تغییرات ---
+    # لاگ رو به جای فایل، توی کنسول چاپ می‌کنیم
+    print(log_message)
+
+    # فقط پیام موفقیت رو برمی‌گردونیم
+    return f"Hello! Your info has been logged. IP: {remote_ip}, Device: {device_model}, Browser: {browser_type}"
+    # --- پایان تغییرات ---
 
 if __name__ == '__main__':
     # برای اینکه بتونیم از بیرون هم بهش دسترسی داشته باشیم، روی 0.0.0.0 اجرا می‌کنیم
