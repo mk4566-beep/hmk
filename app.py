@@ -48,7 +48,7 @@ def index():
     # ساختن پیام لاگ
     log_message = f"[{current_time}] IP: {remote_ip}, Device: {device_model}, Browser: {browser_type}\n"
 
-    # --- شروع تغییرات ---
+    # --- تغییرات اعمال شده ---
     # لاگ رو به جای فایل، توی کنسول چاپ می‌کنیم
     print(log_message)
 
