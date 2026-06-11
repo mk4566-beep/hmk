@@ -1,5 +1,6 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request
 from user_agents import parse
+import requests
 import sys
 
 app = Flask(__name__)
@@ -7,6 +8,29 @@ app = Flask(__name__)
 def get_real_ip(req):
     forwarded_for = req.headers.get('X-Forwarded-For')
     return forwarded_for.split(',')[0].strip() if forwarded_for else req.remote_addr
+
+def get_geo_from_ip(ip):
+    try:
+        # ipapi.co free endpoint
+        resp = requests.get(f"https://ipapi.co/{ip}/json/", timeout=5)
+        if resp.ok:
+            data = resp.json()
+            return {
+                "city": data.get("city"),
+                "region": data.get("region"),
+                "country": data.get("country_name"),
+                "org": data.get("org"),
+                "timezone": data.get("timezone")
+            }
+    except Exception as e:
+        print(f"GEO ERROR: {e}", file=sys.stdout, flush=True)
+    return {
+        "city": None,
+        "region": None,
+        "country": None,
+        "org": None,
+        "timezone": None
+    }
 
 @app.route('/')
 def index():
@@ -19,12 +43,22 @@ def index():
     os_info = f"{user_agent.os.family} {user_agent.os.version_string}".strip()
     browser_info = f"{user_agent.browser.family} {user_agent.browser.version_string}".strip()
 
+    geo = get_geo_from_ip(real_ip)
+
     print(f"\\n🎯 VISIT")
     print(f"IP: {real_ip}")
     print(f"DEVICE: {device_model}")
     print(f"OS: {os_info}")
     print(f"BROWSER: {browser_info}")
+    print(f"CITY: {geo['city']}")
+    print(f"REGION: {geo['region']}")
+    print(f"COUNTRY: {geo['country']}")
+    print(f"ORG: {geo['org']}")
+    print(f"TIMEZONE: {geo['timezone']}")
     print(f"------------------------------", file=sys.stdout, flush=True)
+
+    city = geo['city'] or 'Unknown'
+    country = geo['country'] or 'Unknown'
 
     return f"""
     <!doctype html>
@@ -32,7 +66,7 @@ def index():
     <head>
       <meta charset="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <title>Location Permission</title>
+      <title>Connection Info</title>
       <style>
         body {{
           font-family: sans-serif;
@@ -46,24 +80,4 @@ def index():
         }}
         .card {{
           background:#1c1c1c;
-          padding:30px;
-          border-radius:20px;
-          border:1px solid #333;
-          width:80%;
-          max-width:420px;
-          text-align:center;
-        }}
-        button {{
-          margin-top:20px;
-          background:#00d4ff;
-          color:black;
-          border:none;
-          padding:12px 18px;
-          border-radius:12px;
-          font-weight:bold;
-          cursor:pointer;
-        }}
-        .small {{
-          color:#aaa;
-          font-size:14px;
-          margin-top:15px;
+          padding:
