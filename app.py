@@ -1,50 +1,46 @@
 from flask import Flask, request
 from datetime import datetime
 
-try:
-    from user_agents import parse
-except ImportError:
-    parse = None
-
 app = Flask(__name__)
 
 @app.route('/')
 def index():
-    # زمان دقیق
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # گرفتن IP واقعی کاربر
-    forwarded_for = request.headers.get('X-Forwarded-For')
-    if forwarded_for:
-        ip = forwarded_for.split(',')[0].strip()
+    x_forwarded_for = request.headers.get('X-Forwarded-For')
+    x_real_ip = request.headers.get('X-Real-IP')
+    cf_connecting_ip = request.headers.get('CF-Connecting-IP')
+    true_client_ip = request.headers.get('True-Client-IP')
+    fly_client_ip = request.headers.get('Fly-Client-IP')
+
+    ip = None
+
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0].strip()
+    elif x_real_ip:
+        ip = x_real_ip.strip()
+    elif cf_connecting_ip:
+        ip = cf_connecting_ip.strip()
+    elif true_client_ip:
+        ip = true_client_ip.strip()
+    elif fly_client_ip:
+        ip = fly_client_ip.strip()
     else:
         ip = request.remote_addr
 
-    # گرفتن User-Agent
-    ua_string = request.headers.get('User-Agent', 'Unknown')
+    print("\n" + "=" * 50)
+    print(f"TIME: {now}")
+    print(f"REAL IP: {ip}")
+    print(f"REMOTE_ADDR: {request.remote_addr}")
+    print(f"X-Forwarded-For: {x_forwarded_for}")
+    print(f"X-Real-IP: {x_real_ip}")
+    print(f"CF-Connecting-IP: {cf_connecting_ip}")
+    print(f"True-Client-IP: {true_client_ip}")
+    print(f"Fly-Client-IP: {fly_client_ip}")
+    print(f"User-Agent: {request.headers.get('User-Agent')}")
+    print("=" * 50 + "\n")
 
-    # مقادیر پیش‌فرض
-    device = "Unknown Device"
-    browser = "Unknown Browser"
-
-    # اگر کتابخانه نصب بود، اطلاعات دقیق‌تر بده
-    if parse:
-        ua = parse(ua_string)
-        device = f"{ua.device.family} / {ua.os.family} {ua.os.version_string}".strip()
-        browser = f"{ua.browser.family} {ua.browser.version_string}".strip()
-    else:
-        browser = ua_string
-
-    # لاگ در کنسول Render
-    print("\n" + "=" * 40)
-    print(f"🚀 TARGET SPOTTED AT: {now}")
-    print(f"🌐 REAL IP: {ip}")
-    print(f"📱 DEVICE: {device}")
-    print(f"🌍 BROWSER: {browser}")
-    print("=" * 40 + "\n")
-
-    # پاسخ ساده برای جلوگیری از صفحه سفید
-    return "System Status: Online"
+    return "System is online"
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
