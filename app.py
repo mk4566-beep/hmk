@@ -1,4 +1,4 @@
-# app.py (تغییرات لازم رو اعمال می‌کنیم)
+# app.py
 
 import re
 from flask import Flask, render_template_string, request
@@ -7,7 +7,7 @@ import time # برای شبیه‌سازی تاخیر
 
 app = Flask(__name__)
 
-# قالب HTML رو گسترش میدیم
+# قالب HTML با تمام جزئیات و انیمیشن‌ها
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
@@ -148,6 +148,13 @@ HTML_TEMPLATE = """
                 // برای افکت تایپ، باید متن رو در یک تگ span قرار بدیم
                 if (type !== 'error' && type !== 'info-msg') { // افکت تایپ برای خروجی عادی
                     p.innerHTML = '<span class="typing-effect">' + text + '</span>';
+                } else {
+                    // برای پیام‌های info/error که نباید افکت تایپ داشته باشن
+                    // (یا اگر خواستیم داشته باشن، باید براشون تنظیم کنیم)
+                    // فعلا برای info-msg، افکت تایپ کلی رو نگه میداریم
+                     if (type === 'info-msg') {
+                         p.innerHTML = '<span class="typing-effect">' + text + '</span>';
+                     }
                 }
                 terminal.appendChild(p);
                 // اسکرول خودکار به پایین
@@ -156,50 +163,26 @@ HTML_TEMPLATE = """
         }
 
         // شبیه‌سازی بارگذاری و اسکن
+        setTimeout(() => { addTerminalLine("شروع اسکن پورت بر روی webserver-01 (10.0.0.10)..."); }, 3500);
+        setTimeout(() => { addTerminalLine("پورت 80 (HTTP) باز است.", 'output'); }, 5000);
+        setTimeout(() => { addTerminalLine("پورت 443 (HTTPS) باز است.", 'output'); }, 6000);
+        setTimeout(() => { addTerminalLine("تلاش برای یافتن آسیب‌پذیری در وب‌سرور...", 'info-msg'); }, 7000);
+        setTimeout(() => { addTerminalLine("آسیب‌پذیری SMB در دستگاه file-server (10.0.0.20) شناسایی شد!", 'highlight'); }, 8500);
+        setTimeout(() => { addTerminalLine("تلاش برای دسترسی به سیستم فایل...", 'info-msg'); }, 9500);
+        setTimeout(() => { addTerminalLine("دسترسی به فایل‌های حساس برقرار شد!", 'highlight'); }, 11000);
+        setTimeout(() => { addTerminalLine("انتقال داده‌ها آغاز شد...", 'output'); }, 12000);
+        setTimeout(() => { addTerminalLine("فایروال شبکه شناسایی شد. در حال تلاش برای دور زدن...", 'info-msg'); }, 13000);
+        setTimeout(() => { addTerminalLine("اتصال ناامن شناسایی شد! ممکن است ترافیک شما شنود شود.", 'error'); }, 14500);
+
+        // <<< پیام نهایی موفقیت >>>
         setTimeout(() => {
-            addTerminalLine("شروع اسکن پورت بر روی webserver-01 (10.0.0.10)...");
-        }, 3500); // بعد از پیام "در حال اسکن دستگاه‌ها..."
+            addTerminalLine(">>>>>> نفوذ با موفقیت انجام شد! <<<<<<", 'highlight');
+        }, 16000); // زمان نمایش پیام موفقیت
 
+        // پیام پایانی برای بستن ترمینال
         setTimeout(() => {
-            addTerminalLine("پورت 80 (HTTP) باز است.", 'output');
-        }, 5000);
-
-        setTimeout(() => {
-            addTerminalLine("پورت 443 (HTTPS) باز است.", 'output');
-        }, 6000);
-
-        setTimeout(() => {
-            addTerminalLine("تلاش برای یافتن آسیب‌پذیری در وب‌سرور...", 'info-msg');
-        }, 7000);
-
-        setTimeout(() => {
-            addTerminalLine("آسیب‌پذیری SMB در دستگاه file-server (10.0.0.20) شناسایی شد!", 'highlight');
-        }, 8500);
-
-        setTimeout(() => {
-            addTerminalLine("تلاش برای دسترسی به سیستم فایل...", 'info-msg');
-        }, 9500);
-
-        setTimeout(() => {
-            addTerminalLine("دسترسی به فایل‌های حساس برقرار شد!", 'highlight');
-        }, 11000);
-
-        setTimeout(() => {
-            addTerminalLine("انتقال داده‌ها آغاز شد...", 'output');
-        }, 12000);
-
-         setTimeout(() => {
-            addTerminalLine("فایروال شبکه شناسایی شد. در حال تلاش برای دور زدن...", 'info-msg');
-        }, 13000);
-
-         setTimeout(() => {
-            addTerminalLine("اتصال ناامن شناسایی شد! ممکن است ترافیک شما شنود شود.", 'error');
-        }, 14500);
-
-         setTimeout(() => {
-            addTerminalLine("عملیات شبیه‌سازی اسکن و نفوذ به پایان رسید.", 'info-msg');
-        }, 16000);
-
+            addTerminalLine("اتصال قطع شد. خروج از سیستم...", 'info-msg');
+        }, 18000); // بعد از پیام موفقیت
 
     </script>
 </body>
@@ -208,26 +191,39 @@ HTML_TEMPLATE = """
 
 @app.route('/')
 def index():
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0]
+    # گرفتن IP با در نظر گرفتن پروکسی‌ها
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
     ua_string = request.headers.get('User-Agent', '')
     user_agent = parse(ua_string)
 
+    # استخراج مدل دستگاه با هوشمندی بیشتر
     device_model = user_agent.device.model
     if not device_model or "Generic" in device_model or device_model == "K":
+        # تلاش برای استخراج از رشته User-Agent خام
+        # این Regex ممکنه نیاز به تنظیم دقیق‌تر داشته باشه
         match = re.search(r'\(Linux; Android [^;]+; ([^;)]+)', ua_string)
         if match:
             device_model = match.group(1).replace('_', ' ') # جایگزینی آندر اسکور با فاصله
         else:
-            device_model = "دستگاه اندروید ناشناس" # پیام فارسی
+            # اگر باز هم پیدا نشد، یک پیام عمومی فارسی
+            device_model = "دستگاه اندروید ناشناس"
 
+    # اطلاعات سیستم عامل و مرورگر
     os_info = f"{user_agent.os.family} {user_agent.os.version_string}"
     browser_info = f"{user_agent.browser.family} {user_agent.browser.version_string}"
 
+    # اگر IP یا UA خالی بود، پیام مناسب بده
+    if not ip: ip = "نامشخص"
+    if not device_model: device_model = "نامشخص"
+    if not os_info or os_info.strip() == "": os_info = "نامشخص"
+    if not browser_info or browser_info.strip() == "": browser_info = "نامشخص"
+
+
     return render_template_string(HTML_TEMPLATE, ip=ip, device=device_model, os=os_info, browser=browser_info, raw_ua=ua_string)
 
+# برای اجرای محلی با پورت دلخواه
 if __name__ == '__main__':
-    # برای اجرای محلی، دیباگ رو روشن کنید
+    # debug=True فقط برای توسعه محلی استفاده شود
     # app.run(debug=True)
-    # برای اجرا روی Render، از gunicorn استفاده کنید
-    # برای تست سریع، می‌تونید پورت رو هم مشخص کنید
-    app.run(host='0.0.0.0', port=8080)
+    # برای اجرای روی سرور یا Render، این خط را استفاده کنید:
+    app.run(host='0.0.0.0', port=8080) # پورت 8080 برای تست محلی، Render پورت را خودش تنظیم میکند
