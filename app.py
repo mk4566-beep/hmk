@@ -12,7 +12,9 @@ app = Flask(__name__)
 # --- تنظیمات فایل‌ها و پوشه‌ها ---
 STATIC_FOLDER = 'static' # پوشه برای فایل‌های استاتیک (CSS, JS, Images)
 IMAGE_FILENAME = 'image.png' # نام فایلی که می‌خواهیم نمایش دهیم
-SOURCE_IMAGE_PATH = '[/mnt/data/image.png'](https://storage.gapgpt.app/media/code_interpreter/8365ef4f-103f-4fdb-8092-524c8267676b/image.png%27) # مسیر فایل اصلی در /mnt/data
+
+# --- اصلاح شده: مسیر فایل اصلی در /mnt/data ---
+SOURCE_IMAGE_PATH = '[/mnt/data/image.png'](https://storage.gapgpt.app/media/code_interpreter/8365ef4f-103f-4fdb-8092-524c8267676b/image.png%27) # مسیر فایل اصلی
 IMAGE_PATH_IN_STATIC = os.path.join(STATIC_FOLDER, IMAGE_FILENAME) # مسیر فایل در پوشه static
 
 # --- اطمینان از وجود پوشه static و کپی فایل ---
@@ -20,7 +22,7 @@ if not os.path.exists(STATIC_FOLDER):
     os.makedirs(STATIC_FOLDER)
     print(f"پوشه '{STATIC_FOLDER}' ساخته شد.")
 
-# کپی فایل image.png از /mnt/data به پوشه static اگر وجود ندارد
+# کپی فایل image.png از /mnt/data به پوشه static اگر وجود دارد و در مقصد نیست
 if os.path.exists(SOURCE_IMAGE_PATH) and not os.path.exists(IMAGE_PATH_IN_STATIC):
     try:
         shutil.copyfile(SOURCE_IMAGE_PATH, IMAGE_PATH_IN_STATIC)
@@ -314,4 +316,9 @@ if __name__ == '__main__':
     # اجرای برنامه
     # debug=True برای توسعه محلی بسیار مفید است تا تغییرات را سریعتر ببینید.
     # در محیط production (مثل Render) باید debug=False باشد.
+    # این بخش را برای دیپلوی روی پلتفرم‌هایی مثل Render باید اصلاح کنید تا از متغیر محیطی PORT استفاده کند:
+    # port = int(os.environ.get('PORT', 8080))
+    # app.run(host='0.0.0.0', port=port, debug=False) # debug=False برای production
+
+    # اجرای محلی با debug=True (پیش‌فرض):
     app.run(host='0.0.0.0', port=8080, debug=True)
