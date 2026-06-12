@@ -1,3 +1,5 @@
+# app.py
+
 import re
 from flask import Flask, render_template_string, request
 from user_agents import parse
@@ -5,14 +7,14 @@ import time # برای شبیه‌سازی تاخیر
 
 app = Flask(__name__)
 
-# قالب HTML با تمام جزئیات و انیمیشن‌ها
+# قالب HTML با تمام جزئیات و انیمیشن‌ها - بدون باکس اطلاعات کاربر
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>اسکنر امنیتی یونس</title>
+    <title>شبیه‌ساز هکری یونس</title> <!-- عنوان صفحه تغییر کرد -->
     <style>
         body {
             background-color: #0a0a0a; /* زمینه تیره‌تر */
@@ -24,44 +26,26 @@ HTML_TEMPLATE = """
             min-height: 100vh; /* حداقل ارتفاع صفحه */
             margin: 0;
             overflow: hidden; /* جلوگیری از اسکرول ناخواسته */
-            flex-direction: column; /* چیدمان عمودی برای اطلاعات و ترمینال */
+            flex-direction: column; /* چیدمان عمودی */
             padding: 20px;
             box-sizing: border-box;
         }
         .container {
+            /* چون info-box حذف شده، container دیگه نیازی به flex-direction column نداره
+               اما برای اطمینان نگهش می‌داریم */
             display: flex;
-            flex-direction: column; /* اول اطلاعات، بعد ترمینال */
+            flex-direction: column;
             align-items: center;
             width: 100%;
             max-width: 900px; /* عرض کلی صفحه */
         }
-        .info-box {
-            border: 2px solid #00ff41;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
-            text-align: center;
-            width: 90%;
-            max-width: 450px;
-            background: rgba(0, 255, 65, 0.03);
-            margin-bottom: 30px; /* فاصله با ترمینال */
-        }
-        .info-box h1 {
-            color: #fff;
-            text-shadow: 0 0 8px #00ff41;
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
-        .info-item { margin: 12px 0; border-bottom: 1px solid #1a1a1a; padding-bottom: 6px; }
-        .label { font-size: 0.7em; color: #777; display: block; margin-bottom: 2px; }
-        .val { font-size: 1em; font-weight: bold; color: #00ff41; }
-        .ua-debug { font-size: 0.5em; color: #444; margin-top: 15px; word-break: break-all; text-align: left; }
+        /* .info-box حذف شده */
 
         /* استایل ترمینال */
         .terminal {
             width: 90%;
             max-width: 850px;
-            height: 400px; /* ارتفاع ترمینال */
+            height: 500px; /* کمی ارتفاع ترمینال را بیشتر کردیم تا جا داشته باشد */
             background-color: #000;
             border: 2px solid #00ff41;
             border-radius: 10px;
@@ -117,14 +101,7 @@ HTML_TEMPLATE = """
 </head>
 <body>
     <div class="container">
-        <div class="info-box">
-            <h1>وضعیت سیستم یونس</h1>
-            <div class="info-item"><span class="label">آی‌پی شما:</span><span class="val">{{ ip }}</span></div>
-            <div class="info-item"><span class="label">مدل دستگاه:</span><span class="val">{{ device }}</span></div>
-            <div class="info-item"><span class="label">سیستم عامل:</span><span class="val">{{ os }}</span></div>
-            <div class="info-item"><span class="label">مرورگر:</span><span class="val">{{ browser }}</span></div>
-            <div class="ua-debug">Raw UA: {{ raw_ua }}</div>
-        </div>
+        <!-- .info-box حذف شده -->
 
         <div class="terminal">
             <p class="info-msg typing-effect">در حال بارگذاری سیستم اسکن امنیتی...</p>
@@ -144,15 +121,10 @@ HTML_TEMPLATE = """
                 p.className = type;
                 p.textContent = text;
                 // برای افکت تایپ، باید متن رو در یک تگ span قرار بدیم
-                if (type !== 'error' && type !== 'info-msg') { // افکت تایپ برای خروجی عادی
+                if (type !== 'error') { // افکت تایپ برای همه به جز خطا (یا اگر خواستید خطا هم داشته باشه)
                     p.innerHTML = '<span class="typing-effect">' + text + '</span>';
                 } else {
-                    // برای پیام‌های info/error که نباید افکت تایپ داشته باشن
-                    // (یا اگر خواستیم داشته باشن، باید براشون تنظیم کنیم)
-                    // فعلا برای info-msg، افکت تایپ کلی رو نگه میداریم
-                     if (type === 'info-msg') {
-                         p.innerHTML = '<span class="typing-effect">' + text + '</span>';
-                     }
+                    p.textContent = text; // برای خطا، فقط متن رو قرار بده
                 }
                 terminal.appendChild(p);
                 // اسکرول خودکار به پایین
@@ -189,39 +161,46 @@ HTML_TEMPLATE = """
 
 @app.route('/')
 def index():
-    # گرفتن IP با در نظر گرفتن پروکسی‌ها
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+    # این بخش اطلاعات کاربر رو میگیره ولی چون info-box حذف شده، دیگه نمایش داده نمیشه
+    # اما برای عملکرد صحیح Flask لازمه
+    ip_header = request.headers.get('X-Forwarded-For')
+    if ip_header:
+        ip = ip_header.split(',')[0].strip()
+    else:
+        ip = request.remote_addr
     ua_string = request.headers.get('User-Agent', '')
     user_agent = parse(ua_string)
 
     # استخراج مدل دستگاه با هوشمندی بیشتر
     device_model = user_agent.device.model
     if not device_model or "Generic" in device_model or device_model == "K":
-        # تلاش برای استخراج از رشته User-Agent خام
-        # این Regex ممکنه نیاز به تنظیم دقیق‌تر داشته باشه
         match = re.search(r'\(Linux; Android [^;]+; ([^;)]+)', ua_string)
         if match:
-            device_model = match.group(1).replace('_', ' ') # جایگزینی آندر اسکور با فاصله
+            device_model = match.group(1).replace('_', ' ')
         else:
-            # اگر باز هم پیدا نشد، یک پیام عمومی فارسی
             device_model = "دستگاه اندروید ناشناس"
 
-    # اطلاعات سیستم عامل و مرورگر
     os_info = f"{user_agent.os.family} {user_agent.os.version_string}"
     browser_info = f"{user_agent.browser.family} {user_agent.browser.version_string}"
 
-    # اگر IP یا UA خالی بود، پیام مناسب بده
-    if not ip: ip = "نامشخص"
-    if not device_model: device_model = "نامشخص"
-    if not os_info or os_info.strip() == "": os_info = "نامشخص"
-    if not browser_info or browser_info.strip() == "": browser_info = "نامشخص"
+    # تنظیم مقادیر پیش‌فرض اگر چیزی دریافت نشد
+    ip = ip if ip else "نامشخص"
+    device_model = device_model if device_model else "نامشخص"
+    os_info = os_info if os_info.strip() else "نامشخص"
+    browser_info = browser_info if browser_info.strip() else "نامشخص"
 
 
-    return render_template_string(HTML_TEMPLATE, ip=ip, device=device_model, os=os_info, browser=browser_info, raw_ua=ua_string)
+    # چون info-box حذف شده، مقادیر رو به template پاس نمیدیم مگر اینکه لازم باشه
+    # فعلا فقط raw_ua رو پاس میدیم برای دیباگ احتمالی در کنسول مرورگر
+    return render_template_string(HTML_TEMPLATE, raw_ua=ua_string)
 
 # برای اجرای محلی با پورت دلخواه
 if __name__ == '__main__':
     # debug=True فقط برای توسعه محلی استفاده شود
     # app.run(debug=True)
+
     # برای اجرای روی سرور یا Render، این خط را استفاده کنید:
-    app.run(host='0.0.0.0', port=8080) # پورت 8080 برای تست محلی، Render پورت را خودش تنظیم میکند
+    # app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)), debug=False)
+
+    # اجرای محلی با پورت 8080:
+    app.run(host='0.0.0.0', port=8080)
